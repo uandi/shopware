@@ -3,7 +3,7 @@
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/Measurement.php';
-$products = require_once __DIR__ . '/_fixtures.php';
+$products = include __DIR__ . '/_fixtures.php';
 
 (new Symfony\Component\Dotenv\Dotenv())->load(__DIR__ . '/../../.env');
 
