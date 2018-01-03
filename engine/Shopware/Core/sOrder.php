@@ -1046,10 +1046,7 @@ class sOrder
         $billingID = $this->db->lastInsertId();
 
         $billingAddressId = null;
-
-        if ($this->session !== null) {
-            $billingAddressId = $this->session->get('checkoutBillingAddressId');
-        }
+        $billingAddressId = $this->getSession()->get('checkoutBillingAddressId');
 
         if ($billingAddressId === null) {
             $billingAddressId = $customer->getDefaultBillingAddress()->getId();
@@ -1142,10 +1139,7 @@ class sOrder
         $shippingId = $this->db->lastInsertId();
 
         $shippingAddressId = null;
-
-        if ($this->session !== null) {
-            $shippingAddressId = $this->session->get('checkoutShippingAddressId');
-        }
+        $shippingAddressId = $this->getSession()->get('checkoutShippingAddressId');
 
         if ($shippingAddressId === null) {
             /** @var Customer $customer */
