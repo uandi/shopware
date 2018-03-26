@@ -130,7 +130,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
               ON article.id = detail.articleID
             WHERE detail.instock > 2
             AND detail.active = 1
-            AND article.laststock = 1
+            AND detail.lastStock = 1
             LIMIT 1'
         );
 
@@ -167,7 +167,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
               ON article.id = detail.articleID
             WHERE detail.instock > 5
             AND detail.active = 1
-            AND article.laststock = 1
+            AND detail.lastStock = 1
             AND article.active = 1
             LIMIT 1'
         );
@@ -189,7 +189,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
               ON article.id = detail.articleID
             WHERE detail.instock > 5
             AND detail.active = 1
-            AND article.laststock = 1
+            AND detail.lastStock = 1
             AND article.active = 1
             AND article.id != "' . $outStockArticle['articleID'] . '"
             LIMIT 1'
@@ -235,7 +235,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
             INNER JOIN s_articles article
               ON article.id = detail.articleID
             WHERE detail.active = 1
-            AND article.laststock = 0
+            AND detail.lastStock = 0
             LIMIT 1'
         );
 
@@ -661,6 +661,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
             $result['sErrorMessages']
         );
 
+        // Try with valid voucher code, empty basket
         $voucherData = [
             'vouchercode' => 'testOne',
             'description' => 'testOne description',
@@ -670,7 +671,6 @@ class sBasketTest extends PHPUnit\Framework\TestCase
             'ordercode' => uniqid(rand()),
             'modus' => 0,
         ];
-        // Try with valid voucher code, empty basket
         $this->db->insert(
             's_emarketing_vouchers',
             $voucherData
@@ -678,21 +678,28 @@ class sBasketTest extends PHPUnit\Framework\TestCase
         $this->module->sSYSTEM->sSESSION_ID = uniqid(rand());
         $this->session->offsetSet('sessionId', $this->module->sSYSTEM->sSESSION_ID);
         $result = $this->module->sAddVoucher('testOne');
+
         $this->assertInternalType('array', $result);
         $this->assertArrayHasKey('sErrorFlag', $result);
         $this->assertArrayHasKey('sErrorMessages', $result);
         $this->assertTrue($result['sErrorFlag']);
-        $this->assertContains(
-            str_replace(
-                '{sMinimumCharge}',
-                $voucherData['minimumcharge'],
-                $this->snippetManager->getNamespace('frontend/basket/internalMessages')->get(
-                    'VoucherFailureMinimumCharge',
-                    'The minimum charge for this voucher is {sMinimumCharge}'
-                )
-            ),
-            $result['sErrorMessages']
-        );
+        $this->assertContains('Der Mindestumsatz für diesen Gutschein beträgt 10,00&nbsp;&euro;', $result['sErrorMessages']);
+
+        // Check if a currency switch is reflected in the snippet correctly
+        $currencyDe = Shopware()->Container()->get('Currency');
+        Shopware()->Container()->set('Currency', new \Zend_Currency('GBP', new \Zend_Locale('en_GB')));
+
+        $this->module->sSYSTEM->sSESSION_ID = uniqid(rand());
+        $this->session->offsetSet('sessionId', $this->module->sSYSTEM->sSESSION_ID);
+        $result = $this->module->sAddVoucher('testOne');
+        $this->assertInternalType('array', $result);
+        $this->assertArrayHasKey('sErrorFlag', $result);
+        $this->assertArrayHasKey('sErrorMessages', $result);
+        $this->assertTrue($result['sErrorFlag']);
+
+        $this->assertContains('Der Mindestumsatz für diesen Gutschein beträgt &pound;10.00', $result['sErrorMessages']);
+
+        Shopware()->Container()->set('Currency', $currencyDe);
 
         // Add one article to the basket with enough value to use discount
         $randomArticle = $this->db->fetchRow(
@@ -817,17 +824,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
         $this->assertArrayHasKey('sErrorFlag', $result);
         $this->assertArrayHasKey('sErrorMessages', $result);
         $this->assertTrue($result['sErrorFlag']);
-        $this->assertContains(
-            str_replace(
-                '{sMinimumCharge}',
-                $voucherData['minimumcharge'],
-                $this->snippetManager->getNamespace('frontend/basket/internalMessages')->get(
-                    'VoucherFailureMinimumCharge',
-                    'The minimum charge for this voucher is {sMinimumCharge}'
-                )
-            ),
-            $result['sErrorMessages']
-        );
+        $this->assertContains('Der Mindestumsatz für diesen Gutschein beträgt 10,00&nbsp;&euro;', $result['sErrorMessages']);
 
         // Add one article to the basket with enough value to use discount
         $randomArticle = $this->db->fetchRow(
@@ -1823,6 +1820,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
                 'mainDetail' => [
                     'number' => 'swTEST' . uniqid(rand()),
                     'inStock' => 15,
+                    'lastStock' => true,
                     'unitId' => 1,
                     'prices' => [
                         [
@@ -2189,7 +2187,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
               FROM s_articles_avoid_customergroups
               WHERE customergroupID = 1
             )
-            AND (article.laststock = 0 OR detail.instock > 0)
+            AND (detail.lastStock = 0 OR detail.instock > 0)
             LIMIT 1'
         );
 
@@ -2230,7 +2228,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
               FROM s_articles_avoid_customergroups
               WHERE customergroupID = 1
             )
-            AND (article.laststock = 0 OR detail.instock > 0)
+            AND (detail.lastStock = 0 OR detail.instock > 0)
             LIMIT 1'
         );
         $idOne = $this->module->sAddArticle($randomArticle['ordernumber'], 1);
@@ -2251,7 +2249,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
         $this->module->sSYSTEM->sSESSION_ID = uniqid(rand());
         $this->session->offsetSet('sessionId', $this->module->sSYSTEM->sSESSION_ID);
 
-        // Get random article with stock controll and add it to the basket
+        // Get random article with stock control and add it to the basket
         $randomArticleOne = $this->db->fetchRow(
             'SELECT detail.* FROM s_articles_details detail
             INNER JOIN s_articles article
@@ -2259,7 +2257,7 @@ class sBasketTest extends PHPUnit\Framework\TestCase
             LEFT JOIN s_articles_avoid_customergroups avoid
               ON avoid.articleID = article.id
             WHERE detail.active = 1
-            AND laststock = 1
+            AND detail.lastStock = 1
             AND instock > 3
             AND avoid.articleID IS NULL
             AND article.id NOT IN (
@@ -2300,9 +2298,9 @@ class sBasketTest extends PHPUnit\Framework\TestCase
             INNER JOIN s_articles article
               ON article.id = detail.articleID
             WHERE detail.active = 1
-            AND laststock = 0
-            AND instock > 20
-            AND instock < 70
+            AND detail.laststock = 0
+            AND detail.instock > 20
+            AND detail.instock < 70
             AND article.id NOT IN (
               SELECT articleID
               FROM s_articles_avoid_customergroups
